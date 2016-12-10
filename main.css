@@ -1,4 +1,4 @@
-* { padding: 0; margin: 0; border: none; font-family: -apple-system;}
+* { padding: 0; margin: 0; border: none; font-family: -apple-system, BlinkMacSystemFont;}
 
 #field {
   position: absolute;
@@ -13,9 +13,8 @@
   position: absolute;
   bottom: 10vh;
   display: flex;
+  justify-content: center;
   flex-direction: row;
-  left: 50%;
-  transform: translateX(-50%);
 }
 
 .card {
@@ -26,6 +25,7 @@
   font-size: 5em;
   cursor: -webkit-grab;
   cursor: grab;
+  margin: 0 18px;
 }
 
 .card.dragged {

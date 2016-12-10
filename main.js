@@ -7,21 +7,25 @@ const CARDS = {
     id: "0",
     text: "a",
     color: "red",
+    icon: 'M70 40 L100 90 L40 90 Z',
   },
   "1": {
     id: "1",
     text: "b",
     color: "green",
+    icon: 'M100 30 L100 90 L40 90 L40 30 Z',
   },
   "2": {
     id: "2",
     text: "c",
     color: "blue",
+    icon: 'M100 30 L100 90 L40 90 L40 30 L70 60 Z',
   },
   "3": {
     id: "3",
     text: "d",
     color: "orange",
+    icon: 'M100 30 L100 50 L60 90 L40 90 L40 70 L80 30 Z',
   },
 }
 
@@ -34,9 +38,6 @@ function drawACard() {
     handId: window.state.handIdIncr++,
   }
 }
-
-const img = new Image()
-img.src = 'http://lorempixel.com/280/360'
 
 const UI = (state) => {
   return h("div", {id: "wrapper"},
@@ -68,20 +69,16 @@ const UI = (state) => {
             Math.cos(30 * Math.PI / 180) - Math.cos(angle * Math.PI / 180)
           ))
 
+          const isDragged = state.draggedCard === handCard.handId
+
           return h("div", {
-              className: `card card-${handCard.cardId} ${state.draggedCard === handCard.handId ? 'dragged' : ''}`,
-              draggable: true,
               key: handCard.handId,
-              style: {
-                backgroundColor: card.color,
-                transform: `rotate(${angle}deg) translateY(${translateY}px)`,
-              },
+              draggable: true,
               onDragStart: (ev) => {
                 const text = CARDS[handCard.cardId].text
                 const color = CARDS[handCard.cardId].color
                 ev.dataTransfer.setData('application/json', JSON.stringify(handCard))
 
-                ev.dataTransfer.setDragImage(img, img.width * 0.3, img.height * 0.7)
                 window.state.draggedCard = handCard.handId
                 window.render()
               },
@@ -90,7 +87,16 @@ const UI = (state) => {
                 window.render()
               },
             },
-            card.text
+            h("svg", {
+                className: `card ${isDragged ? 'dragged' : ''}`,
+                viewBox: '0 0 140 180',
+                style: {
+                  backgroundColor: card.color,
+                },
+              },
+              h("path", {stroke: 'white', fill: 'transparent', d: card.icon, strokeWidth: 10}),
+              h("text", {stroke: 'white', fill: 'white', x: 50, y: 160, textAnchor: 'center'}, card.text)
+            )
           )
         })
       )
