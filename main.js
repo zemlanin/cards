@@ -35,8 +35,100 @@ function drawACard() {
 
   return {
     cardId: cardsIds[r],
-    handId: window.state.handIdIncr++,
+    handId: drawACard.handIdIncr++,
   }
+}
+drawACard.handIdIncr = 0
+
+const noop = () => {}
+
+/*
+  node: {
+    
+  }
+
+  event: {
+    handle: (model, prevNode, info) => {model, nextNode}
+  }
+*/
+
+const STATE_MACHINE = {
+  nodes: {
+    empty: {},
+    idle: {},
+    draggingCard: {},
+  },
+  events: {
+    init: {
+      handle: (model, prevNode, info) => {
+        return {
+          model: {
+            hand: [drawACard(), drawACard(), drawACard(), drawACard()],
+            draggedCard: null,
+            fieldColor: null,
+          },
+          nextNode: 'idle',
+        }
+      },
+    },
+    dragCard: {
+      handle: (model, prevNode, info) => {
+        const { handCard, onDragStartEvent } = info
+
+        const text = CARDS[handCard.cardId].text
+        const color = CARDS[handCard.cardId].color
+        onDragStartEvent.dataTransfer.setData('application/json', JSON.stringify(handCard))
+
+        return {
+          model: Object.assign({}, model, {draggedCard: handCard.handId}),
+          nextNode: 'draggingCard',
+        }
+      }
+    },
+    dropCard: {
+      handle: (model, prevNode, info) => {
+        return {
+          model: Object.assign({}, model, {draggedCard: null}),
+          nextNode: 'idle',
+        }
+      },
+    },
+    playCard: {
+      handle: (model, prevNode, info) => {
+        const { handCard, onDropEvent } = info
+
+        if (onDropEvent.dataTransfer.types.some(t => t === 'application/json')) {
+          const handCard = JSON.parse(onDropEvent.dataTransfer.getData('application/json'))
+
+          return {
+            model: Object.assign({}, model, {
+              fieldColor: CARDS[handCard.cardId].color,
+              draggedCard: null,
+              hand: model.hand.filter(hc => hc.handId !== handCard.handId).concat(drawACard())
+            }),
+            nextNode: 'idle',
+          }
+        }
+      },
+    },
+  }
+}
+
+let machine = {
+  node: 'empty',
+  model: {},
+}
+
+function fireEvent(eventName, info) {
+  const { model, nextNode } = STATE_MACHINE.events[eventName].handle(
+    machine.model,
+    eventName,
+    info
+  )
+
+  ReactDOM.render(h(UI, model), document.body)
+
+  machine = { node: nextNode, model }
 }
 
 const UI = (state) => {
@@ -46,19 +138,8 @@ const UI = (state) => {
       style: {
         background: state.fieldColor,
       },
-      onDragOver: (ev) => { ev.preventDefault() },
-      onDrop: (ev) => {
-        if (ev.dataTransfer.types.some(t => t === 'application/json')) {
-          const handCard = JSON.parse(ev.dataTransfer.getData('application/json'))
-
-          window.state.fieldColor = CARDS[handCard.cardId].color
-          window.state.draggedCard = null
-          window.state.hand = window.state.hand
-            .filter(hc => hc.handId !== handCard.handId)
-            .concat(drawACard())
-          window.render()
-        }
-      }
+      onDragOver: (ev) => ev.preventDefault(),
+      onDrop: (onDropEvent) => fireEvent('playCard', {onDropEvent}),
     }),
     h("div", {id: "hand"},
       state.hand
@@ -74,18 +155,8 @@ const UI = (state) => {
           return h("div", {
               key: handCard.handId,
               draggable: true,
-              onDragStart: (ev) => {
-                const text = CARDS[handCard.cardId].text
-                const color = CARDS[handCard.cardId].color
-                ev.dataTransfer.setData('application/json', JSON.stringify(handCard))
-
-                window.state.draggedCard = handCard.handId
-                window.render()
-              },
-              onDragEnd: (ev) => {
-                window.state.draggedCard = null
-                window.render()
-              },
+              onDragStart: (onDragStartEvent) => fireEvent('dragCard', {handCard, onDragStartEvent}),
+              onDragEnd: () => fireEvent('dropCard'),
             },
             h("svg", {
                 className: `card ${isDragged ? 'dragged' : ''}`,
@@ -103,18 +174,4 @@ const UI = (state) => {
     )
 }
 
-window.state = window.state || {
-  hand: [],
-  handIdIncr: 0,
-  draggedCard: null,
-  fieldColor: null,
-}
-
-window.render = () => ReactDOM.render(h(UI, window.state), document.body)
-
-window.state.hand.push(drawACard())
-window.state.hand.push(drawACard())
-window.state.hand.push(drawACard())
-window.state.hand.push(drawACard())
-
-window.render()
+fireEvent('init')
